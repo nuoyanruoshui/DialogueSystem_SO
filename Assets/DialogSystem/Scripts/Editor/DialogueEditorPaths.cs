@@ -3,7 +3,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-namespace Miemie.DialogSystem.Editor
+namespace NuoYan.DialogSystem.Editor
 {
     /// <summary>
     /// 对话编辑器常用资产路径

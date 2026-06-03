@@ -226,6 +226,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1214285879}
   - component: {fileID: 1214285880}
+  - component: {fileID: 1214285881}
+  - component: {fileID: 1214285882}
   m_Layer: 0
   m_Name: Runner
   m_TagString: Untagged
@@ -260,7 +262,48 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c171682ca1c2f7e44b5c0a9d3d7357aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dialogueGraph: {fileID: 11400000, guid: 81d8bbd78bb4c784dacf4900e11c117c, type: 2}
+  dialogueGraph: {fileID: 11400000, guid: f98c4ff1d3c45c64c8dd0c6d3150f19a, type: 2}
+--- !u!114 &1214285881
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1214285878}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e69846d27dc4e3f4e82c9c15b991000b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_EventListener:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1214285882}
+        m_TargetAssemblyTypeName: Test, Assembly-CSharp
+        m_MethodName: TestMethod
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  m_EventAsset:
+  - {fileID: 6832081701388396639, guid: f98c4ff1d3c45c64c8dd0c6d3150f19a, type: 2}
+--- !u!114 &1214285882
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1214285878}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08603d07a4febbf40a8f202f6e65a0ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1718463829
 GameObject:
   m_ObjectHideFlags: 0

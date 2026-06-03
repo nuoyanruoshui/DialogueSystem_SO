@@ -1,4 +1,4 @@
-namespace Miemie.DialogSystem
+namespace NuoYan.DialogSystem
 {
     public enum SpeakEnums
     {

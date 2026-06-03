@@ -1,5 +1,5 @@
 #if UNITY_EDITOR
-namespace Miemie.DialogSystem.Editor
+namespace NuoYan.DialogSystem.Editor
 {
     /// <summary>
     /// 编辑器上下文，记录当前正在编辑的 Graph

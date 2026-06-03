@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
-namespace Miemie.DialogSystem
+namespace NuoYan.DialogSystem
 {
     [Serializable]
     public class NodeLayoutEntry
     {
-        public DialogueNode node;
+        public DialogueNodeBase node;
         public Vector2 position;
     }
 
@@ -16,31 +16,35 @@ namespace Miemie.DialogSystem
     public class DialogueGraph : ScriptableObject
     {
         #region 字段
-        [SerializeField] private int graphId;
+        [SerializeField, ReadOnly] private int graphId;
         [SerializeField] private string graphName;
-        [SerializeField] private DialogueNode startNode;
-        [SerializeField] private List<DialogueNode> nodeList = new List<DialogueNode>();
-        [HideInInspector][SerializeField] 
+        [SerializeField] private DialogueNodeBase startNode;
+        [SerializeField] private List<DialogueNodeBase> nodeList = new List<DialogueNodeBase>();
+        [HideInInspector]
+        [SerializeField]
         private List<NodeLayoutEntry> nodeLayouts = new List<NodeLayoutEntry>();
+        [SerializeField, HideInInspector]
+        private DialogueVariables variables = new DialogueVariables();
         #endregion
 
         #region 属性
         public int GraphId => graphId;
         public string GraphName => graphName;
-        public DialogueNode StartNode => startNode;
-        public List<DialogueNode> NodeList => nodeList;
+        public DialogueNodeBase StartNode => startNode;
+        public List<DialogueNodeBase> NodeList => nodeList;
         public List<NodeLayoutEntry> NodeLayouts => nodeLayouts;
+        public DialogueVariables Variables => variables;
         #endregion
 
         #region 方法
-        public void AddNode(DialogueNode node)
+        public void AddNode(DialogueNodeBase node)
         {
             if (nodeList is null)
-                nodeList = new List<DialogueNode>();
+                nodeList = new List<DialogueNodeBase>();
             nodeList.Add(node);
         }
 
-        public void RemoveNode(DialogueNode node)
+        public void RemoveNode(DialogueNodeBase node)
         {
             if (nodeList is null)
             {
@@ -51,7 +55,7 @@ namespace Miemie.DialogSystem
             RemoveLayout(node);
         }
 
-        public Vector2 GetLayout(DialogueNode node)
+        public Vector2 GetLayout(DialogueNodeBase node)
         {
             if (node == null || nodeLayouts == null)
                 return Vector2.zero;
@@ -65,7 +69,7 @@ namespace Miemie.DialogSystem
             return Vector2.zero;
         }
 
-        public void SetLayout(DialogueNode node, Vector2 position)
+        public void SetLayout(DialogueNodeBase node, Vector2 position)
         {
             if (node == null)
                 return;
@@ -85,7 +89,7 @@ namespace Miemie.DialogSystem
             nodeLayouts.Add(new NodeLayoutEntry { node = node, position = position });
         }
 
-        void RemoveLayout(DialogueNode node)
+        void RemoveLayout(DialogueNodeBase node)
         {
             if (nodeLayouts == null)
                 return;
@@ -94,7 +98,7 @@ namespace Miemie.DialogSystem
         }
 
 #if UNITY_EDITOR
-        public void SetStartNode(DialogueNode node)
+        public void SetStartNode(DialogueNodeBase node)
         {
             startNode = node;
         }

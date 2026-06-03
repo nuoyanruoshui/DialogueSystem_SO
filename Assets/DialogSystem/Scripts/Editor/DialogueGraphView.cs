@@ -7,7 +7,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Miemie.DialogSystem.Editor
+namespace NuoYan.DialogSystem.Editor
 {
     /// <summary>
     /// 单个对话节点的 GraphView 视图
@@ -19,44 +19,91 @@ namespace Miemie.DialogSystem.Editor
         bool hasSavedLayout;
         Vector2 savedLayoutPosition;
 
-        public DialogueNode Node { get; }
+        static readonly Color SeqColor = new Color(0.20f, 0.55f, 0.72f);
+        static readonly Color OptColor = new Color(0.80f, 0.50f, 0.18f);
+        static readonly Color DefaultBg = new Color(0.24f, 0.24f, 0.24f);
+
+        public DialogueNodeBase Node { get; }
 
         public Port InputPort { get; private set; }
 
-        public DialogueNodeView(DialogueNode node, DialogueGraph graph)
+        public DialogueNodeView(DialogueNodeBase node, DialogueGraph graph)
         {
             Node = node;
             this.graph = graph;
 
-            title = BuildTitle();
             viewDataKey = node.GetInstanceID().ToString();
             capabilities |= Capabilities.Selectable | Capabilities.Movable | Capabilities.Deletable;
 
+            ApplyNodeStyle();
+            BuildPorts();
+            BuildEventIndicator();
+
+            style.width = 150;
+            RefreshExpandedState();
+            RefreshPorts();
+        }
+
+        void ApplyNodeStyle()
+        {
+            bool isOption = Node is DialogueOptionNode;
+            Color accent = isOption ? OptColor : SeqColor;
+
+            // 标题栏
+            titleContainer.style.backgroundColor = accent;
+            titleContainer.style.paddingTop = 4;
+            titleContainer.style.paddingBottom = 4;
+            titleContainer.style.borderTopLeftRadius = 6;
+            titleContainer.style.borderTopRightRadius = 6;
+
+            // 类型标签
+            titleContainer.Add(new Label(isOption ? "OPTION" : "TALK")
+            {
+                name = "node-type-badge",
+                pickingMode = PickingMode.Ignore,
+                style =
+                {
+                    fontSize = 9,
+                    color = new Color(1, 1, 1, 0.65f),
+                    unityFontStyleAndWeight = FontStyle.Bold,
+                    marginLeft = 6,
+                    marginTop = 2,
+                    unityTextAlign = TextAnchor.UpperLeft,
+                }
+            });
+
+            // 主题边框
+            mainContainer.style.backgroundColor = DefaultBg;
+            mainContainer.style.borderLeftWidth = 2;
+            mainContainer.style.borderRightWidth = 2;
+            mainContainer.style.borderBottomWidth = 2;
+            mainContainer.style.borderLeftColor = accent;
+            mainContainer.style.borderRightColor = accent;
+            mainContainer.style.borderBottomColor = accent;
+            mainContainer.style.borderBottomLeftRadius = 4;
+            mainContainer.style.borderBottomRightRadius = 4;
+
+            RefreshTitle();
+        }
+
+        void BuildPorts()
+        {
             InputPort = InstantiatePort(Orientation.Horizontal, Direction.Input, Port.Capacity.Multi, typeof(float));
             InputPort.portName = "In";
             inputContainer.Add(InputPort);
 
-            if (node.IsOptionNode)
+            if (Node is DialogueOptionNode)
                 RebuildChoicePorts();
             else
                 AddSingleOutputPort("Out");
-
-            RefreshExpandedState();
-            RefreshPorts();
-
-        }
-
-        string BuildTitle()
-        {
-            string text = Node.DialogText;
-            if (!string.IsNullOrEmpty(text) && text.Length > 16)
-                text = text.Substring(0, 16) + "…";
-            return $"[{Node.NodeId}] {Node.SpeakerName}\n{text}";
         }
 
         public void RefreshTitle()
         {
-            title = BuildTitle();
+            string text = Node.DialogText;
+            if (!string.IsNullOrEmpty(text) && text.Length > 20)
+                text = text.Substring(0, 20) + "…";
+            title = $"[{Node.NodeId}] {Node.SpeakerName}\n{text}";
         }
 
         void AddSingleOutputPort(string portName)
@@ -72,13 +119,19 @@ namespace Miemie.DialogSystem.Editor
             outputContainer.Clear();
             outputPorts.Clear();
 
-            int count = Mathf.Max(1, Node.ChoiceList?.Count ?? 0);
+            if (Node is not DialogueOptionNode optNode)
+            {
+                AddSingleOutputPort("Out");
+                return;
+            }
+
+            int count = Mathf.Max(1, optNode.ChoiceList?.Count ?? 0);
             for (int i = 0; i < count; i++)
             {
                 var port = InstantiatePort(Orientation.Horizontal, Direction.Output, Port.Capacity.Single, typeof(float));
                 string label = "新选项";
-                if (Node.ChoiceList != null && i < Node.ChoiceList.Count && Node.ChoiceList[i] != null)
-                    label = string.IsNullOrEmpty(Node.ChoiceList[i].labelText) ? $"选项{i + 1}" : Node.ChoiceList[i].labelText;
+                if (optNode.ChoiceList != null && i < optNode.ChoiceList.Count && optNode.ChoiceList[i] != null)
+                    label = string.IsNullOrEmpty(optNode.ChoiceList[i].labelText) ? $"选项{i + 1}" : optNode.ChoiceList[i].labelText;
                 port.portName = label;
                 port.userData = i;
                 outputContainer.Add(port);
@@ -100,10 +153,115 @@ namespace Miemie.DialogSystem.Editor
 
         public int GetOutputPortIndex(Port port) => outputPorts.IndexOf(port);
 
+        static readonly Color StartBorderColor = new Color(0.20f, 0.85f, 0.35f);
+
         public void MarkAsStartNode()
         {
             titleContainer.style.borderTopWidth = 3;
-            titleContainer.style.borderTopColor = new Color(0.2f, 0.85f, 0.35f);
+            titleContainer.style.borderTopColor = StartBorderColor;
+        }
+
+        Label eventBadge;
+
+        void BuildEventIndicator()
+        {
+            // 标题栏事件计数徽章
+            eventBadge = new Label
+            {
+                name = "node-event-badge",
+                pickingMode = PickingMode.Ignore,
+                text = "",
+                style =
+                {
+                    fontSize = 9,
+                    color = new Color(1, 1, 0.5f, 0.85f),
+                    unityFontStyleAndWeight = FontStyle.Bold,
+                    marginLeft = 6,
+                }
+            };
+            titleContainer.Add(eventBadge);
+
+            RefreshEvents();
+        }
+
+        internal void RefreshEvents()
+        {
+            // 更新徽章
+            int count = 0;
+            var so = new UnityEditor.SerializedObject(Node);
+            var listProp = so.FindProperty("m_NodeEvents");
+            if (listProp != null)
+                count = listProp.arraySize;
+            eventBadge.text = count > 0 ? $"⚡{count}" : "";
+
+            // 重建扩展区（事件行 + 工具栏）
+            extensionContainer.Clear();
+            extensionContainer.style.display = DisplayStyle.None;
+
+            if (count == 0) return;
+
+            extensionContainer.style.display = DisplayStyle.Flex;
+
+            // 事件行
+            for (int i = 0; i < listProp.arraySize; i++)
+            {
+                var elemProp = listProp.GetArrayElementAtIndex(i);
+                var evRef = elemProp.objectReferenceValue;
+                if (evRef == null) continue;
+
+                int index = i;
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.alignItems = Align.Center;
+                row.style.minHeight = 22;
+                row.style.backgroundColor = new Color(1, 1, 0.5f, 0.06f);
+                row.style.paddingLeft = 6;
+                row.style.paddingRight = 2;
+                row.style.borderBottomWidth = 1;
+                row.style.borderBottomColor = new Color(1, 1, 0.5f, 0.15f);
+
+                // 点击整行 Ping 资产
+                row.RegisterCallback<MouseDownEvent>(_ =>
+                {
+                    UnityEditor.Selection.activeObject = evRef;
+                    EditorGUIUtility.PingObject(evRef);
+                });
+
+                var delBtn = new Label("×");
+                delBtn.style.fontSize = 14;
+                delBtn.style.color = new Color(1, 0.3f, 0.3f, 0.75f);
+                delBtn.style.width = 22;
+                delBtn.style.height = 18;
+                delBtn.style.unityTextAlign = TextAnchor.MiddleCenter;
+                delBtn.RegisterCallback<MouseDownEvent>(_ =>
+                {
+                    var s = new UnityEditor.SerializedObject(Node);
+                    var p = s.FindProperty("m_NodeEvents");
+                    if (index < p.arraySize)
+                    {
+                        var ev = p.GetArrayElementAtIndex(index).objectReferenceValue;
+                        p.DeleteArrayElementAtIndex(index);
+                        s.ApplyModifiedProperties();
+                        if (ev != null) { AssetDatabase.RemoveObjectFromAsset(ev); UnityEngine.Object.DestroyImmediate(ev, true); }
+                        EditorUtility.SetDirty(Node); AssetDatabase.SaveAssets();
+                        RefreshEvents();
+                    }
+                });
+                row.Add(delBtn);
+                row.Add(new Label($"{evRef.name}")
+                {
+                    style =
+                    {
+                        fontSize = 6,
+                        color = new Color(1, 1, 0.5f, 0.85f),
+                        unityFontStyleAndWeight = FontStyle.Bold,
+                        flexGrow = 1,
+                    }
+                });
+                extensionContainer.Add(row);
+            }
+
+            RefreshExpandedState();
         }
 
         public void SaveLayout()
@@ -127,14 +285,14 @@ namespace Miemie.DialogSystem.Editor
     /// </summary>
     public class DialogueGraphView : GraphView
     {
-        const float DefaultNodeWidth = 220f;
+        const float DefaultNodeWidth = 240f;
         const float DefaultNodeHeight = 120f;
         const float MinorGridSpacing = 20f;
         const float MajorGridSpacing = 100f;
         const int MiddleMouseButton = 2;
 
         readonly DialogueGraphEditorWindow ownerWindow;
-        readonly Dictionary<DialogueNode, DialogueNodeView> nodeViews = new Dictionary<DialogueNode, DialogueNodeView>();
+        readonly Dictionary<DialogueNodeBase, DialogueNodeView> nodeViews = new Dictionary<DialogueNodeBase, DialogueNodeView>();
         readonly IMGUIContainer gridBackground;
 
         DialogueGraph currentGraph;
@@ -209,11 +367,29 @@ namespace Miemie.DialogSystem.Editor
                 EditorGUI.DrawRect(new Rect(0f, y, rect.width, lineWidth), color);
         }
 
-        // 画布选中变化后同步左侧树
+        // 画布选中变化后同步左侧树 / 右侧连线属性
         void SyncGraphSelectionToTree()
         {
             if (suppressSelectionBroadcast || isPopulating)
                 return;
+
+            // 优先检测连线选中
+            foreach (var item in selection)
+            {
+                if (item is Edge edge && edge.userData != null && edge.output?.node != null)
+                {
+                    var sourceView = edge.output.node as DialogueNodeView;
+                    var sourceNode = sourceView?.Node;
+                    if (sourceNode != null)
+                    {
+                        ownerWindow.SelectEdgeData(edge.userData, sourceNode);
+                        return;
+                    }
+                }
+            }
+
+            // 没有选中连线 → 清除连线属性面板
+            ownerWindow.ClearEdgeSelection();
 
             foreach (var item in selection)
             {
@@ -226,6 +402,15 @@ namespace Miemie.DialogSystem.Editor
 
             if (!selection.Any() && currentGraph != null)
                 ownerWindow.SelectObjectInTree(currentGraph);
+        }
+
+        // 点击连线时同步右侧属性面板
+        static void RegisterEdgeClick(Edge edge, DialogueGraphView gv)
+        {
+            edge.RegisterCallback<MouseDownEvent>(_ =>
+            {
+                gv.schedule.Execute(gv.SyncGraphSelectionToTree);
+            });
         }
 
         static Port FindPort(VisualElement element)
@@ -295,22 +480,48 @@ namespace Miemie.DialogSystem.Editor
         {
             if (currentGraph != null)
             {
-                var mousePos = contentViewContainer.WorldToLocal(evt.originalMousePosition);
-                evt.menu.AppendAction("创建对话节点", _ => CreateNodeAtMouse(mousePos));
+                var mousePos = contentViewContainer.WorldToLocal(evt.localMousePosition);
+                evt.menu.AppendAction("Create Sequence Node", _ => CreateSequenceNodeAtMouse(mousePos));
+                evt.menu.AppendAction("Create Option Node", _ => CreateOptionNodeAtMouse(mousePos));
                 evt.menu.AppendSeparator();
             }
 
             base.BuildContextualMenu(evt);
         }
 
-        void CreateNodeAtMouse(Vector2 localPosition)
+        void CreateSequenceNodeAtMouse(Vector2 localPosition)
         {
             if (currentGraph == null)
                 return;
 
-            var node = ownerWindow.CreateNodeAsset(currentGraph);
+            var node = ownerWindow.CreateNodeAsset<DialogueNode>(currentGraph);
             if (node == null)
                 return;
+
+            currentGraph.AddNode(node);
+            EditorUtility.SetDirty(currentGraph);
+
+            var view = CreateNodeView(node, localPosition);
+            view.SaveLayout();
+            EditorApplication.delayCall += () =>
+            {
+                ownerWindow.ForceMenuTreeRebuild();
+                ownerWindow.ResetSelectionSync();
+            };
+        }
+
+        void CreateOptionNodeAtMouse(Vector2 localPosition)
+        {
+            if (currentGraph == null)
+                return;
+
+            var node = ownerWindow.CreateNodeAsset<DialogueOptionNode>(currentGraph);
+            if (node == null)
+                return;
+
+            // 预置 2 个默认选项使创建后即可连接
+            node.AddChoice(new DialogueChoice { labelText = "选项1", condition = new DialogueCondition() });
+            node.AddChoice(new DialogueChoice { labelText = "选项2", condition = new DialogueCondition() });
 
             currentGraph.AddNode(node);
             EditorUtility.SetDirty(currentGraph);
@@ -332,7 +543,10 @@ namespace Miemie.DialogSystem.Editor
             if (change.edgesToCreate != null)
             {
                 foreach (var edge in change.edgesToCreate)
+                {
+                    RegisterEdgeClick(edge, this);
                     ApplyEdgeCreate(edge);
+                }
             }
 
             if (change.movedElements != null)
@@ -368,15 +582,15 @@ namespace Miemie.DialogSystem.Editor
             var sourceNode = sourceView.Node;
             var targetNode = targetView.Node;
 
-            if (sourceNode.IsOptionNode)
+            if (sourceNode is DialogueOptionNode optNode)
             {
                 int portIndex = sourceView.GetOutputPortIndex(edge.output);
-                EnsureChoiceCount(sourceNode, portIndex + 1);
-                sourceNode.ChoiceList[portIndex].toNode = targetNode;
+                EnsureChoiceCount(optNode, portIndex + 1);
+                optNode.ChoiceList[portIndex].toNode = targetNode;
             }
-            else
+            else if (sourceNode is DialogueNode seqNode)
             {
-                sourceNode.AddLink(new DialogueLink
+                seqNode.AddLink(new DialogueLink()
                 {
                     toNode = targetNode,
                     condition = new DialogueCondition()
@@ -396,15 +610,15 @@ namespace Miemie.DialogSystem.Editor
             var sourceNode = sourceView.Node;
             var targetNode = targetView.Node;
 
-            if (sourceNode.IsOptionNode)
+            if (sourceNode is DialogueOptionNode optNode)
             {
                 int portIndex = sourceView.GetOutputPortIndex(edge.output);
-                if (portIndex >= 0 && portIndex < sourceNode.ChoiceList.Count)
-                    sourceNode.ChoiceList[portIndex].toNode = null;
+                if (portIndex >= 0 && portIndex < optNode.ChoiceList.Count)
+                    optNode.ChoiceList[portIndex].toNode = null;
             }
-            else if (sourceNode.LinkList != null)
+            else if (sourceNode is DialogueNode seqNode && seqNode.LinkList != null)
             {
-                sourceNode.LinkList.RemoveAll(link => link != null && link.toNode == targetNode);
+                seqNode.LinkList.RemoveAll(link => link != null && link.toNode == targetNode);
             }
 
             EditorUtility.SetDirty(sourceNode);
@@ -415,14 +629,32 @@ namespace Miemie.DialogSystem.Editor
             if (currentGraph == null || nodeView?.Node == null)
                 return;
 
-            currentGraph.RemoveNode(nodeView.Node);
-            nodeViews.Remove(nodeView.Node);
+            var node = nodeView.Node;
+            currentGraph.RemoveNode(node);
+            nodeViews.Remove(node);
+
+            // 删除节点资产（sub-asset 用 RemoveObjectFromAsset，独立资产用 DeleteAsset）
+            if (AssetDatabase.IsSubAsset(node))
+            {
+                AssetDatabase.RemoveObjectFromAsset(node);
+                UnityEngine.Object.DestroyImmediate(node, true);
+            }
+            else
+            {
+                string assetPath = AssetDatabase.GetAssetPath(node);
+                if (!string.IsNullOrEmpty(assetPath))
+                    AssetDatabase.DeleteAsset(assetPath);
+            }
+
             EditorUtility.SetDirty(currentGraph);
             ownerWindow.ForceMenuTreeRebuild();
             ownerWindow.ResetSelectionSync();
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
         }
 
-        static void EnsureChoiceCount(DialogueNode node, int count)
+        static void EnsureChoiceCount(DialogueOptionNode node, int count)
         {
             if (node.ChoiceList == null)
                 return;
@@ -476,7 +708,7 @@ namespace Miemie.DialogSystem.Editor
             }
         }
 
-        DialogueNodeView CreateNodeView(DialogueNode node, Vector2 position)
+        DialogueNodeView CreateNodeView(DialogueNodeBase node, Vector2 position)
         {
             var view = new DialogueNodeView(node, currentGraph);
             view.SetPosition(new Rect(position, new Vector2(DefaultNodeWidth, DefaultNodeHeight)));
@@ -486,14 +718,51 @@ namespace Miemie.DialogSystem.Editor
             view.capabilities |= Capabilities.Selectable | Capabilities.Movable | Capabilities.Deletable;
             view.RegisterCallback<ContextualMenuPopulateEvent>(evt =>
             {
-                evt.menu.AppendAction("设为起点", _ => SetStartNode(node));
-                evt.menu.AppendAction("聚焦到左侧树", _ => ownerWindow.SelectObjectInTree(node));
+                if (node is DialogueOptionNode optNode)
+                {
+                    int index = (optNode.ChoiceList?.Count ?? 0) + 1;
+                    evt.menu.AppendAction("Add Choice", _ =>
+                    {
+                        optNode.AddChoice(new DialogueChoice
+                        {
+                            labelText = $"选项{index}",
+                            condition = new DialogueCondition()
+                        });
+                        EditorUtility.SetDirty(optNode);
+                        view.RebuildChoicePorts();
+                        ownerWindow.ForceMenuTreeRebuild();
+                        ownerWindow.ResetSelectionSync();
+                    });
+                    evt.menu.AppendSeparator();
+                }
+                evt.menu.AppendAction("Add Node Event", _ =>
+                {
+                    var ev = ScriptableObject.CreateInstance<DialogueEvent>();
+                    var so = new SerializedObject(node);
+                    var listProp = so.FindProperty("m_NodeEvents");
+                    ev.name = $"{node.name}_Event_{listProp.arraySize}";
+                    AssetDatabase.AddObjectToAsset(ev, node);
+                    AssetDatabase.SaveAssets();
+
+
+                    listProp.InsertArrayElementAtIndex(listProp.arraySize);
+                    listProp.GetArrayElementAtIndex(listProp.arraySize - 1).objectReferenceValue = ev;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+
+                    EditorUtility.SetDirty(node);
+                    view.RefreshEvents();
+                    ownerWindow.ForceMenuTreeRebuild();
+                    ownerWindow.ResetSelectionSync();
+                });
+                evt.menu.AppendSeparator();
+                evt.menu.AppendAction("Set as Start Node", _ => SetStartNode(node));
+                evt.menu.AppendAction("Focus on Left Tree", _ => ownerWindow.SelectObjectInTree(node));
             });
 
             return view;
         }
 
-        void SetStartNode(DialogueNode node)
+        void SetStartNode(DialogueNodeBase node)
         {
             if (currentGraph == null || node == null)
                 return;
@@ -519,15 +788,15 @@ namespace Miemie.DialogSystem.Editor
                 var node = pair.Key;
                 var sourceView = pair.Value;
 
-                if (node.IsOptionNode)
+                if (node is DialogueOptionNode optNode)
                 {
                     sourceView.RebuildChoicePorts();
-                    if (node.ChoiceList == null)
+                    if (optNode.ChoiceList == null)
                         continue;
 
-                    for (int i = 0; i < node.ChoiceList.Count; i++)
+                    for (int i = 0; i < optNode.ChoiceList.Count; i++)
                     {
-                        var choice = node.ChoiceList[i];
+                        var choice = optNode.ChoiceList[i];
                         if (choice?.toNode == null)
                             continue;
                         if (!nodeViews.TryGetValue(choice.toNode, out var targetView))
@@ -539,15 +808,16 @@ namespace Miemie.DialogSystem.Editor
 
                         var edge = outPort.ConnectTo(targetView.InputPort);
                         edge.userData = choice;
+                        RegisterEdgeClick(edge, this);
                         AddElement(edge);
                     }
                 }
-                else
+                else if (node is DialogueNode seqNode)
                 {
-                    if (node.LinkList == null)
+                    if (seqNode.LinkList == null)
                         continue;
 
-                    foreach (var link in node.LinkList)
+                    foreach (var link in seqNode.LinkList)
                     {
                         if (link?.toNode == null)
                             continue;
@@ -556,13 +826,14 @@ namespace Miemie.DialogSystem.Editor
 
                         var edge = sourceView.OutputPort.ConnectTo(targetView.InputPort);
                         edge.userData = link;
+                        RegisterEdgeClick(edge, this);
                         AddElement(edge);
                     }
                 }
             }
         }
 
-        public void SelectNode(DialogueNode node)
+        public void SelectNode(DialogueNodeBase node)
         {
             if (node == null || !nodeViews.TryGetValue(node, out var view))
                 return;
@@ -587,7 +858,7 @@ namespace Miemie.DialogSystem.Editor
             }
         }
 
-        public void FocusNode(DialogueNode node)
+        public void FocusNode(DialogueNodeBase node)
         {
             if (node == null || !nodeViews.TryGetValue(node, out var view))
                 return;
@@ -654,7 +925,7 @@ namespace Miemie.DialogSystem.Editor
                 return;
             }
 
-            if (selected is DialogueNode node)
+            if (selected is DialogueNodeBase node)
             {
                 var graphForNode = ownerWindow.FindGraphForNode(node);
                 if (graphForNode == null)

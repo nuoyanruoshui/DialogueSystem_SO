@@ -1,0 +1,130 @@
+﻿{
+  "graphId": 1780473607,
+  "graphName": "Dialogue Graph_1780473607",
+  "assetName": "Dialogue Graph_1780473607",
+  "assetPath": "Assets/DialogSystem/NodeSo/Dialogue Graph_1780473607.asset",
+  "startNodeId": 0,
+  "nodes": [
+    {
+      "nodeId": 0,
+      "assetName": "Dialog Node_1780473839",
+      "speakType": "Node",
+      "speakerName": "小明",
+      "dialogText": "今天",
+      "isOptionNode": false,
+      "layout": {
+        "x": -1715.0,
+        "y": -317.0
+      },
+      "links": [
+        {
+          "toNodeId": 1780473852,
+          "condition": {
+            "conditionType": "None",
+            "key": "",
+            "targetBool": false
+          }
+        }
+      ],
+      "choices": [],
+      "events": []
+    },
+    {
+      "nodeId": 1780473850,
+      "assetName": "Option Node_1780473850",
+      "speakType": "Node",
+      "speakerName": "小李",
+      "dialogText": "今天还是明天？",
+      "isOptionNode": true,
+      "layout": {
+        "x": -1352.0,
+        "y": -317.0
+      },
+      "links": [],
+      "choices": [
+        {
+          "labelText": "选项1",
+          "toNodeId": 1780473860,
+          "condition": {
+            "conditionType": "BoolEquals",
+            "key": "IsToday",
+            "targetBool": false
+          }
+        },
+        {
+          "labelText": "选项2",
+          "toNodeId": 1780473868,
+          "condition": {
+            "conditionType": "BoolEquals",
+            "key": "IsToday",
+            "targetBool": true
+          }
+        }
+      ],
+      "events": []
+    },
+    {
+      "nodeId": 1780473852,
+      "assetName": "Dialog Node_1780473852",
+      "speakType": "Node",
+      "speakerName": "小明",
+      "dialogText": "明天",
+      "isOptionNode": false,
+      "layout": {
+        "x": -1536.0,
+        "y": -317.0
+      },
+      "links": [
+        {
+          "toNodeId": 1780473850,
+          "condition": {
+            "conditionType": "None",
+            "key": "",
+            "targetBool": false
+          }
+        }
+      ],
+      "choices": [],
+      "events": []
+    },
+    {
+      "nodeId": 1780473860,
+      "assetName": "Dialog Node_1780473860",
+      "speakType": "Node",
+      "speakerName": "小明",
+      "dialogText": "今天",
+      "isOptionNode": false,
+      "layout": {
+        "x": -1118.0,
+        "y": -440.0
+      },
+      "links": [],
+      "choices": [],
+      "events": [
+        {
+          "eventName": "Dialog Node_1780473860_Event_0",
+          "eventType": "DialogueEvent"
+        },
+        {
+          "eventName": "Dialog Node_1780473860_Event_1",
+          "eventType": "DialogueEvent"
+        }
+      ]
+    },
+    {
+      "nodeId": 1780473868,
+      "assetName": "Dialog Node_1780473868",
+      "speakType": "Node",
+      "speakerName": "小明",
+      "dialogText": "明天",
+      "isOptionNode": false,
+      "layout": {
+        "x": -1103.0,
+        "y": -223.0
+      },
+      "links": [],
+      "choices": [],
+      "events": []
+    }
+  ]
+}

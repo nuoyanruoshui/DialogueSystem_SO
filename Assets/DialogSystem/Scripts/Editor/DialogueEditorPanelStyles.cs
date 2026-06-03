@@ -3,7 +3,7 @@ using Sirenix.OdinInspector.Editor;
 using UnityEditor;
 using UnityEngine;
 
-namespace Miemie.DialogSystem.Editor
+namespace NuoYan.DialogSystem.Editor
 {
     // 左右侧栏 IMGUI 与 UIElements 主题
     static class DialogueEditorPanelStyles

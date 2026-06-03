@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx *)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "codegraph"
+  ],
+  "enableAllProjectMcpServers": true
+}

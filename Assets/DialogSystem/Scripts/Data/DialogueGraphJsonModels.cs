@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Miemie.DialogSystem
+namespace NuoYan.DialogSystem
 {
     /// <summary>
     /// 对话图 JSON 导出/导入用的纯数据模型（不依赖 Unity 资产引用）。
@@ -26,6 +26,7 @@ namespace Miemie.DialogSystem
         public LayoutJson layout;
         public List<DialogueLinkJson> links = new();
         public List<DialogueChoiceJson> choices = new();
+        public List<DialogueEventJson> events = new();
     }
 
     public class LayoutJson
@@ -52,5 +53,11 @@ namespace Miemie.DialogSystem
         public string conditionType;
         public string key;
         public bool targetBool;
+    }
+
+    public class DialogueEventJson
+    {
+        public string eventName;
+        public string eventType;
     }
 }

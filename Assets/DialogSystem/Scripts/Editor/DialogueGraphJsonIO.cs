@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
 
-namespace Miemie.DialogSystem.Editor
+namespace NuoYan.DialogSystem.Editor
 {
     /// <summary>
     /// 对话图 JSON 导入与导出
@@ -151,7 +151,7 @@ namespace Miemie.DialogSystem.Editor
             return model;
         }
 
-        static DialogueNodeJson ToNodeModel(DialogueGraph graph, DialogueNode node)
+        static DialogueNodeJson ToNodeModel(DialogueGraph graph, DialogueNodeBase node)
         {
             var layout = graph.GetLayout(node);
             var nodeJson = new DialogueNodeJson
@@ -161,13 +161,13 @@ namespace Miemie.DialogSystem.Editor
                 speakType = node.SpeakType.ToString(),
                 speakerName = node.SpeakerName,
                 dialogText = node.DialogText,
-                isOptionNode = node.IsOptionNode,
+                isOptionNode = node is DialogueOptionNode,
                 layout = new LayoutJson { x = layout.x, y = layout.y },
             };
 
-            if (node.IsOptionNode && node.ChoiceList != null)
+            if (node is DialogueOptionNode optNode && optNode.ChoiceList != null)
             {
-                foreach (var choice in node.ChoiceList)
+                foreach (var choice in optNode.ChoiceList)
                 {
                     if (choice == null)
                         continue;
@@ -180,9 +180,9 @@ namespace Miemie.DialogSystem.Editor
                     });
                 }
             }
-            else if (node.LinkList != null)
+            else if (node is DialogueNode seqNode && seqNode.LinkList != null)
             {
-                foreach (var link in node.LinkList)
+                foreach (var link in seqNode.LinkList)
                 {
                     if (link == null)
                         continue;
@@ -191,6 +191,20 @@ namespace Miemie.DialogSystem.Editor
                     {
                         toNodeId = link.toNode != null ? link.toNode.NodeId : 0,
                         condition = ToConditionModel(link.condition),
+                    });
+                }
+            }
+
+            // Events
+            if (node.NodeEvents != null)
+            {
+                foreach (var ev in node.NodeEvents)
+                {
+                    if (ev == null) continue;
+                    nodeJson.events.Add(new DialogueEventJson
+                    {
+                        eventName = ev.name,
+                        eventType = ev.GetType().Name,
                     });
                 }
             }
@@ -225,7 +239,7 @@ namespace Miemie.DialogSystem.Editor
 
         static void ApplyModel(DialogueGraph graph, DialogueGraphJson model)
         {
-            var existingById = new Dictionary<int, DialogueNode>();
+            var existingById = new Dictionary<int, DialogueNodeBase>();
             if (graph.NodeList != null)
             {
                 foreach (var node in graph.NodeList)
@@ -237,7 +251,7 @@ namespace Miemie.DialogSystem.Editor
                 graph.NodeList.Clear();
             }
 
-            var idMap = new Dictionary<int, DialogueNode>();
+            var idMap = new Dictionary<int, DialogueNodeBase>();
             foreach (var nodeJson in model.nodes)
             {
                 if (nodeJson == null)
@@ -245,13 +259,27 @@ namespace Miemie.DialogSystem.Editor
 
                 if (!existingById.TryGetValue(nodeJson.nodeId, out var node))
                 {
-                    node = CreateNodeAsset(nodeJson);
+                    node = CreateNodeAsset(nodeJson, graph);
                     existingById[nodeJson.nodeId] = node;
                 }
 
                 ApplyNodeScalars(node, nodeJson);
                 graph.AddNode(node);
                 idMap[nodeJson.nodeId] = node;
+            }
+
+            // 清理 JSON 中已删除的旧节点（sub-asset 需从父资产移除）
+            foreach (var kv in existingById)
+            {
+                if (!idMap.ContainsKey(kv.Key))
+                {
+                    var stale = kv.Value;
+                    if (stale != null && AssetDatabase.IsSubAsset(stale))
+                    {
+                        AssetDatabase.RemoveObjectFromAsset(stale);
+                        Object.DestroyImmediate(stale, true);
+                    }
+                }
             }
 
             foreach (var nodeJson in model.nodes)
@@ -263,6 +291,9 @@ namespace Miemie.DialogSystem.Editor
                     ApplyChoices(node, nodeJson.choices, idMap);
                 else
                     ApplyLinks(node, nodeJson.links, idMap);
+
+                // 导入事件
+                ApplyEvents(node, nodeJson.events);
             }
 
             var graphSo = new SerializedObject(graph);
@@ -286,50 +317,101 @@ namespace Miemie.DialogSystem.Editor
                 EditorUtility.SetDirty(node);
         }
 
-        static DialogueNode CreateNodeAsset(DialogueNodeJson nodeJson)
+        static DialogueNodeBase CreateNodeAsset(DialogueNodeJson nodeJson, DialogueGraph parentGraph)
         {
-            string fileName = string.IsNullOrWhiteSpace(nodeJson.assetName) ? "New Dialog Node" : nodeJson.assetName.Trim();
-            string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{DialogueEditorPaths.GraphAssetPath}/{fileName}.asset");
-            var node = ScriptableObject.CreateInstance<DialogueNode>();
-            AssetDatabase.CreateAsset(node, assetPath);
+            DialogueNodeBase node;
+            if (nodeJson.isOptionNode)
+            {
+                node = ScriptableObject.CreateInstance<DialogueOptionNode>();
+            }
+            else
+            {
+                node = ScriptableObject.CreateInstance<DialogueNode>();
+            }
+
+            node.name = string.IsNullOrWhiteSpace(nodeJson.assetName) ? "Node" : nodeJson.assetName.Trim();
+            AssetDatabase.AddObjectToAsset(node, parentGraph);
             return node;
         }
 
-        static void ApplyNodeScalars(DialogueNode node, DialogueNodeJson data)
+        static void ApplyNodeScalars(DialogueNodeBase node, DialogueNodeJson data)
         {
             var so = new SerializedObject(node);
             so.FindProperty("nodeId").intValue = data.nodeId;
             so.FindProperty("speakerName").stringValue = data.speakerName ?? string.Empty;
             so.FindProperty("dialogText").stringValue = data.dialogText ?? string.Empty;
-            so.FindProperty("isOptionNode").boolValue = data.isOptionNode;
 
             if (!string.IsNullOrEmpty(data.speakType) && System.Enum.TryParse(data.speakType, out SpeakEnums speakType))
                 so.FindProperty("speakType").enumValueIndex = (int)speakType;
 
-            so.FindProperty("linkList").ClearArray();
-            so.FindProperty("choiceList").ClearArray();
+            // 清除旧数据——根据节点类型清除对应的列表
+            if (node is DialogueOptionNode)
+            {
+                var choiceProp = so.FindProperty("choiceList");
+                if (choiceProp != null)
+                    choiceProp.ClearArray();
+            }
+            else
+            {
+                var linkProp = so.FindProperty("linkList");
+                if (linkProp != null)
+                    linkProp.ClearArray();
+            }
+
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        static void ApplyLinks(DialogueNode node, List<DialogueLinkJson> links, Dictionary<int, DialogueNode> idMap)
+        static void ApplyLinks(DialogueNodeBase node, List<DialogueLinkJson> links, Dictionary<int, DialogueNodeBase> idMap)
         {
-            var so = new SerializedObject(node);
+            if (node is not DialogueNode seqNode)
+                return;
+
+            var so = new SerializedObject(seqNode);
             var array = so.FindProperty("linkList");
             array.ClearArray();
             FillConnectionArray(array, links, idMap, isChoice: false);
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        static void ApplyChoices(DialogueNode node, List<DialogueChoiceJson> choices, Dictionary<int, DialogueNode> idMap)
+        static void ApplyChoices(DialogueNodeBase node, List<DialogueChoiceJson> choices, Dictionary<int, DialogueNodeBase> idMap)
         {
-            var so = new SerializedObject(node);
+            if (node is not DialogueOptionNode optNode)
+                return;
+
+            var so = new SerializedObject(optNode);
             var array = so.FindProperty("choiceList");
             array.ClearArray();
             FillConnectionArray(array, choices, idMap, isChoice: true);
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        static void FillConnectionArray<T>(SerializedProperty array, List<T> items, Dictionary<int, DialogueNode> idMap, bool isChoice)
+        static void ApplyEvents(DialogueNodeBase node, List<DialogueEventJson> events)
+        {
+            if (events == null || events.Count == 0) return;
+
+            var so = new SerializedObject(node);
+            var listProp = so.FindProperty("m_NodeEvents");
+            if (listProp == null) return;
+
+            listProp.ClearArray();
+
+            foreach (var eventJson in events)
+            {
+                if (eventJson == null) continue;
+
+                var ev = ScriptableObject.CreateInstance<DialogueEvent>();
+                ev.name = string.IsNullOrWhiteSpace(eventJson.eventName) ? "NodeEvent" : eventJson.eventName.Trim();
+                AssetDatabase.AddObjectToAsset(ev, node);
+
+                listProp.InsertArrayElementAtIndex(listProp.arraySize);
+                listProp.GetArrayElementAtIndex(listProp.arraySize - 1).objectReferenceValue = ev;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(node);
+        }
+
+        static void FillConnectionArray<T>(SerializedProperty array, List<T> items, Dictionary<int, DialogueNodeBase> idMap, bool isChoice)
             where T : class
         {
             if (items == null)
@@ -357,7 +439,7 @@ namespace Miemie.DialogSystem.Editor
             }
         }
 
-        static DialogueNode ResolveNode(int nodeId, Dictionary<int, DialogueNode> idMap) =>
+        static DialogueNodeBase ResolveNode(int nodeId, Dictionary<int, DialogueNodeBase> idMap) =>
             nodeId != 0 && idMap.TryGetValue(nodeId, out var node) ? node : null;
 
         static void WriteCondition(SerializedProperty conditionProp, DialogueConditionJson conditionJson)

@@ -1,0 +1,180 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-2482310018650140389
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39d684e1835cf8f409fa8065592bf369, type: 3}
+  m_Name: Dialog Node_1780473860_Event_0
+  m_EditorClassIdentifier: 
+  onNodeEnter:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &-1634139740247345036
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 577abdba421cfc443accb8cce6ccf192, type: 3}
+  m_Name: Dialog Node_1780473860
+  m_EditorClassIdentifier: 
+  nodeId: 1780473860
+  speakType: 0
+  speakerName: "\u5C0F\u660E"
+  dialogText: "\u4ECA\u5929"
+  m_NodeEvents:
+  - {fileID: -2482310018650140389}
+  - {fileID: 5323882515221187161}
+  linkList: []
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e0250bb1ed372d4989b5fa2d62966f5, type: 3}
+  m_Name: Dialogue Graph_1780489514
+  m_EditorClassIdentifier: 
+  graphId: 1780473607
+  graphName: Dialogue Graph_1780473607
+  startNode: {fileID: 0}
+  nodeList:
+  - {fileID: 1121020371467492686}
+  - {fileID: 5793920648032087171}
+  - {fileID: 8424602815071516230}
+  - {fileID: -1634139740247345036}
+  - {fileID: 1364306460201188656}
+  nodeLayouts:
+  - node: {fileID: 1121020371467492686}
+    position: {x: -1715, y: -317}
+  - node: {fileID: 5793920648032087171}
+    position: {x: -1352, y: -317}
+  - node: {fileID: 8424602815071516230}
+    position: {x: -1536, y: -317}
+  - node: {fileID: -1634139740247345036}
+    position: {x: -1118, y: -440}
+  - node: {fileID: 1364306460201188656}
+    position: {x: -1103, y: -223}
+  variables:
+    flagDataList: []
+--- !u!114 &1121020371467492686
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 577abdba421cfc443accb8cce6ccf192, type: 3}
+  m_Name: Dialog Node_1780473839
+  m_EditorClassIdentifier: 
+  nodeId: 0
+  speakType: 0
+  speakerName: "\u5C0F\u660E"
+  dialogText: "\u4ECA\u5929"
+  m_NodeEvents: []
+  linkList:
+  - toNode: {fileID: 8424602815071516230}
+    condition:
+      e_Condition: 0
+      key: 
+      targetBool: 0
+--- !u!114 &1364306460201188656
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 577abdba421cfc443accb8cce6ccf192, type: 3}
+  m_Name: Dialog Node_1780473868
+  m_EditorClassIdentifier: 
+  nodeId: 1780473868
+  speakType: 0
+  speakerName: "\u5C0F\u660E"
+  dialogText: "\u660E\u5929"
+  m_NodeEvents: []
+  linkList: []
+--- !u!114 &5323882515221187161
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39d684e1835cf8f409fa8065592bf369, type: 3}
+  m_Name: Dialog Node_1780473860_Event_1
+  m_EditorClassIdentifier: 
+  onNodeEnter:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &5793920648032087171
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1d5be0140bc33947840cfafb92b77ea, type: 3}
+  m_Name: Option Node_1780473850
+  m_EditorClassIdentifier: 
+  nodeId: 1780473850
+  speakType: 0
+  speakerName: "\u5C0F\u674E"
+  dialogText: "\u4ECA\u5929\u8FD8\u662F\u660E\u5929\uFF1F"
+  m_NodeEvents: []
+  choiceList:
+  - labelText: "\u9009\u98791"
+    toNode: {fileID: -1634139740247345036}
+    condition:
+      e_Condition: 1
+      key: IsToday
+      targetBool: 0
+  - labelText: "\u9009\u98792"
+    toNode: {fileID: 1364306460201188656}
+    condition:
+      e_Condition: 1
+      key: IsToday
+      targetBool: 1
+--- !u!114 &8424602815071516230
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 577abdba421cfc443accb8cce6ccf192, type: 3}
+  m_Name: Dialog Node_1780473852
+  m_EditorClassIdentifier: 
+  nodeId: 1780473852
+  speakType: 0
+  speakerName: "\u5C0F\u660E"
+  dialogText: "\u660E\u5929"
+  m_NodeEvents: []
+  linkList:
+  - toNode: {fileID: 5793920648032087171}
+    condition:
+      e_Condition: 0
+      key: 
+      targetBool: 0

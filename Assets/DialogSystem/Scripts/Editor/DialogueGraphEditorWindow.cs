@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Sirenix.OdinInspector.Editor;
@@ -6,7 +7,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Miemie.DialogSystem.Editor
+namespace NuoYan.DialogSystem.Editor
 {
     /// <summary>
     /// 对话系统编辑器主窗口
@@ -53,8 +54,12 @@ namespace Miemie.DialogSystem.Editor
         bool graphSelectionUpdateScheduled;
         object pendingGraphSelection;
 
-        readonly Dictionary<DialogueNode, DialogueGraph> nodeToGraph = new();
-        readonly Dictionary<DialogueNode, string> nodeLabelCache = new();
+        // 当前选中的连线数据（点击连线时在右侧面板显示属性）
+        object selectedEdgeData;
+        DialogueNodeBase selectedEdgeSourceNode;
+
+        readonly Dictionary<DialogueNodeBase, DialogueGraph> nodeToGraph = new();
+        readonly Dictionary<DialogueNodeBase, string> nodeLabelCache = new();
 
         [MenuItem("Tools/Dialog System")]
         static void Open()
@@ -63,6 +68,27 @@ namespace Miemie.DialogSystem.Editor
             window.titleContent = new GUIContent("Dialog System");
             window.minSize = new Vector2(960, 560);
             window.Show();
+        }
+
+        [UnityEditor.Callbacks.OnOpenAsset(1)]
+        static bool OnOpenAsset(int instanceId, int line)
+        {
+            var graph = EditorUtility.InstanceIDToObject(instanceId) as DialogueGraph;
+            if (graph == null)
+                return false;
+
+            var window = GetWindow<DialogueGraphEditorWindow>();
+            window.titleContent = new GUIContent("Dialog System");
+            window.minSize = new Vector2(960, 560);
+            window.Show();
+
+            EditorApplication.delayCall += () =>
+            {
+                if (window.MenuTree != null)
+                    window.SelectObjectInTree(graph);
+            };
+
+            return true;
         }
 
         protected override void OnEnable()
@@ -397,23 +423,129 @@ namespace Miemie.DialogSystem.Editor
             TryHookSelectionChanged();
         }
 
+        readonly Dictionary<string, bool> paramFoldouts = new();
+
         void DrawLeftPanel()
         {
             float panelWidth = GetLeftPanelWidth();
             EditorGUILayout.BeginVertical(GUILayout.Width(panelWidth), GUILayout.ExpandHeight(true));
             EnsureMenuTree();
             MenuWidth = panelWidth;
+
+            // 上面：对话视图树
+            EditorGUILayout.BeginVertical(GUILayout.ExpandHeight(true));
             DrawMenu();
+            // 下面：Parameters
+            DrawParameters();
             EditorGUILayout.EndVertical();
+
+
+        }
+
+        void DrawParameters()
+        {
+            var graph = lastSelectedGraph;
+            if (graph == null) return;
+
+            // 工具栏头
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+            if (!paramFoldouts.TryGetValue("parameters", out var foldout))
+                paramFoldouts["parameters"] = true;
+            foldout = paramFoldouts["parameters"] = EditorGUILayout.Foldout(foldout, "Parameters", true);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("+", EditorStyles.toolbarButton, GUILayout.Width(22)))
+            {
+                graph.Variables.SetBool("New Flag", true);
+                EditorUtility.SetDirty(graph);
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (!foldout) return;
+
+            var so = new SerializedObject(graph);
+            so.Update();
+
+            var variablesProp = so.FindProperty("variables");
+            if (variablesProp != null)
+            {
+                var listProp = variablesProp.FindPropertyRelative("flagDataList");
+                if (listProp != null)
+                {
+                    // 表头
+                    EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+                    EditorGUILayout.LabelField("Name", GUILayout.Width(GetLeftPanelWidth() - 80));
+                    EditorGUILayout.LabelField("Value", GUILayout.Width(40));
+                    GUILayout.Space(20);
+                    EditorGUILayout.EndHorizontal();
+
+                    if (listProp.arraySize == 0)
+                    {
+                        EditorGUILayout.HelpBox("No parameters. Click \"+\" to add.", MessageType.Info);
+                    }
+                    else
+                    {
+                        // 倒序遍历以安全处理删除
+                        for (int i = listProp.arraySize - 1; i >= 0; i--)
+                        {
+                            var elem = listProp.GetArrayElementAtIndex(i);
+                            DrawParameterRow(elem, listProp, i);
+                        }
+                    }
+
+                    // 底部添加按钮
+                    EditorGUILayout.BeginHorizontal();
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("+ Add Parameter", EditorStyles.miniButton, GUILayout.ExpandWidth(true)))
+                    {
+                        graph.Variables.SetBool("New Flag", true);
+                        EditorUtility.SetDirty(graph);
+                    }
+                    EditorGUILayout.EndHorizontal();
+                }
+            }
+
+            if (so.hasModifiedProperties)
+            {
+                so.ApplyModifiedProperties();
+                EditorUtility.SetDirty(graph);
+                RequestMenuLabelRefreshOnly();
+            }
+        }
+
+        void DrawParameterRow(SerializedProperty elem, SerializedProperty listProp, int index)
+        {
+            var keyProp = elem.FindPropertyRelative("key");
+            var valueProp = elem.FindPropertyRelative("value");
+            if (keyProp == null || valueProp == null) return;
+
+            // 行背景色交替
+            var bg = index % 2 == 0
+                ? new Color(0.22f, 0.22f, 0.22f)
+                : new Color(0.25f, 0.25f, 0.25f);
+
+            var rowRect = EditorGUILayout.BeginHorizontal();
+            EditorGUI.DrawRect(rowRect, bg);
+
+            EditorGUILayout.LabelField("", GUILayout.Width(2)); // 左侧间距
+            keyProp.stringValue = EditorGUILayout.TextField(keyProp.stringValue, GUILayout.ExpandWidth(true));
+            valueProp.boolValue = EditorGUILayout.Toggle(valueProp.boolValue, GUILayout.Width(40));
+
+            if (GUILayout.Button("×", GUILayout.Width(20)))
+            {
+                listProp.DeleteArrayElementAtIndex(index);
+                GUI.changed = true;
+            }
+
+            EditorGUILayout.EndHorizontal();
         }
 
         void DrawRightPanel()
         {
             EditorGUILayout.BeginVertical(GUILayout.Width(GetRightPanelWidth()), GUILayout.ExpandHeight(true));
+
             EnsureMenuTree();
 
             var selected = MenuTree?.Selection?.SelectedValue as UnityEngine.Object;
-            DialogueEditorPanelStyles.DrawPanelHeader("属性", selected != null ? GetSelectionSubtitle(selected) : "未选中");
 
             if (selected == null)
             {
@@ -424,17 +556,104 @@ namespace Miemie.DialogSystem.Editor
                 return;
             }
 
+            // 如果选中了连线，在右侧顶部显示连线属性
+            if (selectedEdgeData != null)
+            {
+                DrawEdgeData();
+                return;
+            }
+
+            DialogueEditorPanelStyles.DrawPanelHeader("属性", selected != null ? GetSelectionSubtitle(selected) : "未选中");
             DialogueEditorPanelStyles.BeginPaddedContent();
+
             DrawSelectedObjectInspector(selected);
+
             DialogueEditorPanelStyles.EndPaddedContent();
+
+
             EditorGUILayout.EndVertical();
+        }
+
+        void DrawEdgeData()
+        {
+            DialogueEditorPanelStyles.DrawPanelHeader("Transition",
+                selectedEdgeData is DialogueLink ? "Sequence Link" : "Option Choice");
+
+            DialogueEditorPanelStyles.BeginPaddedContent();
+
+            if (selectedEdgeData is DialogueLink link && selectedEdgeSourceNode != null)
+            {
+                EditorGUI.BeginChangeCheck();
+                link.condition.e_Condition = (E_Condition)EditorGUILayout.EnumPopup("Condition", link.condition.e_Condition);
+                if (link.condition.e_Condition == E_Condition.BoolEquals)
+                {
+                    EditorGUI.indentLevel++;
+                    DrawKeyPopup(link.condition);
+                    link.condition.targetBool = EditorGUILayout.Toggle("Value", link.condition.targetBool);
+                    EditorGUI.indentLevel--;
+                }
+                if (EditorGUI.EndChangeCheck())
+                    EditorUtility.SetDirty(selectedEdgeSourceNode);
+
+                if (link.toNode != null)
+                    EditorGUILayout.LabelField("→ To", $"{link.toNode.name}");
+            }
+            else if (selectedEdgeData is DialogueChoice choice && selectedEdgeSourceNode != null)
+            {
+                EditorGUI.BeginChangeCheck();
+                choice.labelText = EditorGUILayout.TextField("Label", choice.labelText);
+                choice.condition.e_Condition = (E_Condition)EditorGUILayout.EnumPopup("Condition", choice.condition.e_Condition);
+                if (choice.condition.e_Condition == E_Condition.BoolEquals)
+                {
+                    EditorGUI.indentLevel++;
+                    DrawKeyPopup(choice.condition);
+                    choice.condition.targetBool = EditorGUILayout.Toggle("Value", choice.condition.targetBool);
+                    EditorGUI.indentLevel--;
+                }
+                if (EditorGUI.EndChangeCheck())
+                    EditorUtility.SetDirty(selectedEdgeSourceNode);
+
+                if (choice.toNode != null)
+                    EditorGUILayout.LabelField("→ To", $"{choice.toNode.name}");
+            }
+
+            DialogueEditorPanelStyles.EndPaddedContent();
+        }
+
+        void DrawKeyPopup(DialogueCondition condition)
+        {
+            var graph = lastSelectedGraph;
+            var keys = graph?.Variables?.GetAllKeys();
+            if (keys == null || keys.Length == 0)
+            {
+                condition.key = EditorGUILayout.TextField("Key", condition.key);
+                return;
+            }
+
+            int selected = System.Array.IndexOf(keys, condition.key);
+            // 当前 key 不在列表中 → 追加到选项末尾
+            bool customKey = selected < 0 && !string.IsNullOrEmpty(condition.key);
+            var options = new System.Collections.Generic.List<string>(keys);
+            if (customKey)
+            {
+                selected = options.Count;
+                options.Add(condition.key);
+            }
+
+            int newIndex = EditorGUILayout.Popup("Key", selected < 0 ? 0 : selected, options.ToArray());
+            if (newIndex >= 0 && newIndex < options.Count)
+            {
+                string newKey = options[newIndex];
+                if (!string.IsNullOrEmpty(newKey))
+                    condition.key = newKey;
+            }
         }
 
         static string GetSelectionSubtitle(UnityEngine.Object selected)
         {
             if (selected is DialogueGraph)
                 return "Dialogue Graph";
-            if (selected is DialogueNode node)
+            if (selected is DialogueNodeBase node)
                 return $"Dialogue Node  ·  [{node.NodeId}] {node.SpeakerName}";
             return selected.name;
         }
@@ -469,18 +688,42 @@ namespace Miemie.DialogSystem.Editor
             EditorGUILayout.Space(4);
 
             inspectorScroll = EditorGUILayout.BeginScrollView(inspectorScroll);
-            EditorGUI.BeginChangeCheck();
-            inspectorTree.Draw(false);
-            bool changed = EditorGUI.EndChangeCheck();
+
+            if (inspectorTree != null)
+            {
+                EditorGUI.BeginChangeCheck();
+                inspectorTree.Draw(false);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    inspectorTree.ApplyChanges();
+                    EditorUtility.SetDirty(selected);
+                    QueueGraphViewRefreshFromInspector(selected);
+                    RequestMenuLabelRefreshOnly();
+                }
+            }
+            else
+            {
+                // sub-asset 不支持 Odin PropertyTree，回退到 Unity 默认 Inspector
+                var so = new SerializedObject(selected);
+                so.Update();
+                EditorGUI.BeginChangeCheck();
+                SerializedProperty prop = so.GetIterator();
+                bool enterChildren = true;
+                while (prop.NextVisible(enterChildren))
+                {
+                    enterChildren = false;
+                    EditorGUILayout.PropertyField(prop, true);
+                }
+                if (EditorGUI.EndChangeCheck())
+                {
+                    so.ApplyModifiedProperties();
+                    EditorUtility.SetDirty(selected);
+                    QueueGraphViewRefreshFromInspector(selected);
+                    RequestMenuLabelRefreshOnly();
+                }
+            }
+
             EditorGUILayout.EndScrollView();
-
-            if (!changed)
-                return;
-
-            inspectorTree.ApplyChanges();
-            EditorUtility.SetDirty(selected);
-            QueueGraphViewRefreshFromInspector(selected);
-            RequestMenuLabelRefreshOnly();
         }
 
         void ClearInspectorTree()
@@ -497,7 +740,7 @@ namespace Miemie.DialogSystem.Editor
             graphView.schedule.Execute(() =>
             {
                 graphView.RefreshCurrentGraph(preserveView: true);
-                if (selected is DialogueNode node)
+                if (selected is DialogueNodeBase node)
                     graphView.SelectNode(node);
             });
         }
@@ -549,9 +792,15 @@ namespace Miemie.DialogSystem.Editor
 
             renameTarget = target;
             renameBuffer = target.name;
-            ClearInspectorTree();
-            RequestMenuRefresh();
-            EditorApplication.delayCall += () => SelectObjectInTree(target);
+
+            // 推迟到下一帧清理 inspector tree，避免在本帧 IMGUI 绘制中途
+            // 重建菜单树后 PropertyTree.Create 返回 null 导致崩溃
+            EditorApplication.delayCall += () =>
+            {
+                ClearInspectorTree();
+                RequestMenuRefresh();
+                EditorApplication.delayCall += () => SelectObjectInTree(target);
+            };
         }
 
         void RequestMenuLabelRefreshOnly()
@@ -569,6 +818,15 @@ namespace Miemie.DialogSystem.Editor
             string path = AssetDatabase.GetAssetPath(asset);
             if (string.IsNullOrEmpty(path))
                 return false;
+
+            // sub-asset 不能使用 RenameAsset（会重命名父级资产），直接设置 name
+            if (AssetDatabase.IsSubAsset(asset))
+            {
+                asset.name = newName.Trim();
+                EditorUtility.SetDirty(asset);
+                AssetDatabase.SaveAssets();
+                return true;
+            }
 
             string error = AssetDatabase.RenameAsset(path, newName.Trim());
             if (!string.IsNullOrEmpty(error))
@@ -600,7 +858,7 @@ namespace Miemie.DialogSystem.Editor
                     continue;
                 }
 
-                if (item.Value is not DialogueNode node)
+                if (item.Value is not DialogueNodeBase node)
                     continue;
 
                 string newLabel = BuildNodeLabel(node);
@@ -668,7 +926,7 @@ namespace Miemie.DialogSystem.Editor
             return tree;
         }
 
-        static string BuildNodeLabel(DialogueNode node) =>
+        static string BuildNodeLabel(DialogueNodeBase node) =>
             $"[{node.NodeId}] {node.SpeakerName}: {Truncate(node.DialogText, 12)}";
 
         DialogueGraph GetActiveGraph()
@@ -706,7 +964,7 @@ namespace Miemie.DialogSystem.Editor
                 {
                     var runner = FindObjectOfType<DialogueRunner>();
                     if (runner != null)
-                        runner.PlayGraph(lastSelectedGraph);
+                        runner.StartDialogue(lastSelectedGraph);
                     else
                         Debug.LogWarning("场景中未找到 DialogueRunner");
                 }
@@ -731,7 +989,7 @@ namespace Miemie.DialogSystem.Editor
                 lastSelectedGraph = graph;
                 DialogueEditorContext.CurrentGraph = graph;
             }
-            else if (selected is DialogueNode node)
+            else if (selected is DialogueNodeBase node)
             {
                 lastSelectedGraph = FindGraphForNode(node);
                 DialogueEditorContext.CurrentGraph = lastSelectedGraph;
@@ -754,7 +1012,7 @@ namespace Miemie.DialogSystem.Editor
             });
         }
 
-        public DialogueGraph FindGraphForNode(DialogueNode node)
+        public DialogueGraph FindGraphForNode(DialogueNodeBase node)
         {
             if (node == null)
                 return null;
@@ -797,52 +1055,51 @@ namespace Miemie.DialogSystem.Editor
 
         public void ResetSelectionSync() => lastSyncedSelection = null;
 
+        public void SelectEdgeData(object data, DialogueNodeBase sourceNode)
+        {
+            selectedEdgeData = data;
+            selectedEdgeSourceNode = sourceNode;
+        }
+
+        public void ClearEdgeSelection()
+        {
+            selectedEdgeData = null;
+            selectedEdgeSourceNode = null;
+        }
+
         void CreateNewDialogueGraph()
         {
             DialogueEditorPaths.EnsureGraphAssetFolder();
 
-            string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{DialogueEditorPaths.GraphAssetPath}/New Dialogue Graph.asset");
             var graph = CreateInstance<DialogueGraph>();
-            AssetDatabase.CreateAsset(graph, assetPath);
-
+            int id = DialogueNodeBase.GenerateNodeId();
+            string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{DialogueEditorPaths.GraphAssetPath}/Dialogue Graph_{id}.asset");
             string assetName = System.IO.Path.GetFileNameWithoutExtension(assetPath);
             var so = new SerializedObject(graph);
-            so.FindProperty("graphId").intValue = GetNextGraphId();
+            so.FindProperty("graphId").intValue = id;
             so.FindProperty("graphName").stringValue = assetName;
             so.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.CreateAsset(graph, assetPath);
             AssetDatabase.SaveAssets();
 
             Selection.activeObject = graph;
             RefreshAfterExternalChange(graph);
         }
 
-        static int GetNextGraphId()
+
+        public T CreateNodeAsset<T>(DialogueGraph graph) where T : DialogueNodeBase
         {
-            int maxId = 0;
-            foreach (var guid in AssetDatabase.FindAssets($"t:{nameof(DialogueGraph)}"))
-            {
-                var graph = AssetDatabase.LoadAssetAtPath<DialogueGraph>(AssetDatabase.GUIDToAssetPath(guid));
-                if (graph != null && graph.GraphId > maxId)
-                    maxId = graph.GraphId;
-            }
+            var node = CreateInstance<T>();
+            int id = DialogueNodeBase.GenerateNodeId();
+            node.name = node is DialogueOptionNode ? $"Option Node_{id}" : $"Dialog Node_{id}";
 
-            return maxId + 1;
-        }
-
-        public DialogueNode CreateNodeAsset(DialogueGraph graph)
-        {
-            DialogueEditorPaths.EnsureGraphAssetFolder();
-
-            var node = CreateInstance<DialogueNode>();
-            string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{DialogueEditorPaths.GraphAssetPath}/New Dialog Node.asset");
-            AssetDatabase.CreateAsset(node, assetPath);
+            AssetDatabase.AddObjectToAsset(node, graph);
             AssetDatabase.SaveAssets();
 
             if (graph.NodeList != null && graph.NodeList.Count > 0)
             {
-                int maxId = graph.NodeList.Where(n => n != null).Select(n => n.NodeId).DefaultIfEmpty(0).Max();
                 var so = new SerializedObject(node);
-                so.FindProperty("nodeId").intValue = maxId + 1;
+                so.FindProperty("nodeId").intValue = id;
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
 

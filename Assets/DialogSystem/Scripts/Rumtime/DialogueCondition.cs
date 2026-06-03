@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Miemie.DialogSystem
+namespace NuoYan.DialogSystem
 {
     /// <summary>
     /// 条件类型
@@ -53,7 +53,7 @@ namespace Miemie.DialogSystem
     [Serializable]
     public class DialogueLink
     {
-        public DialogueNode toNode;
+        public DialogueNodeBase toNode;
         public DialogueCondition condition;
 
         /// <summary>
@@ -73,9 +73,10 @@ namespace Miemie.DialogSystem
     /// 该类就是"选项"本身
     /// </summary>
     [Serializable]
-    public class DialogueChoice{
+    public class DialogueChoice
+    {
         public string labelText;
-        public DialogueNode toNode;
+        public DialogueNodeBase toNode;
         // 该条件一般用于判断是否显示该选项
         public DialogueCondition condition;
 
@@ -84,7 +85,8 @@ namespace Miemie.DialogSystem
         /// </summary>
         /// <param name="vars"></param>
         /// <returns></returns>
-        public bool CanPass(DialogueVariables vars){
+        public bool CanPass(DialogueVariables vars)
+        {
             return this.condition.NoneContion || this.condition.MeetCondition(vars);
         }
     }

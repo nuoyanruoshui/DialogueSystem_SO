@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-namespace Miemie.DialogSystem.Editor
+namespace NuoYan.DialogSystem.Editor
 {
     /// <summary>
     /// 对话图校验工具
@@ -27,7 +27,7 @@ namespace Miemie.DialogSystem.Editor
             if (graph.NodeList == null || graph.NodeList.Count == 0)
                 sb.AppendLine("[警告] nodeList 为空");
 
-            var inGraph = new HashSet<DialogueNode>();
+            var inGraph = new HashSet<DialogueNodeBase>();
             if (graph.NodeList != null)
             {
                 foreach (var node in graph.NodeList)
@@ -58,25 +58,25 @@ namespace Miemie.DialogSystem.Editor
             Debug.Log(sb.ToString());
         }
 
-        static void ValidateNode(DialogueNode node, HashSet<DialogueNode> inGraph, StringBuilder sb)
+        static void ValidateNode(DialogueNodeBase node, HashSet<DialogueNodeBase> inGraph, StringBuilder sb)
         {
-            if (node.IsOptionNode)
+            if (node is DialogueOptionNode optNode)
             {
-                if (node.ChoiceList == null || node.ChoiceList.Count == 0)
+                if (optNode.ChoiceList == null || optNode.ChoiceList.Count == 0)
                     sb.AppendLine($"[错误] 选项节点 [{node.NodeId}] choiceList 为空");
                 else
-                    ValidateChoices(node, inGraph, sb);
+                    ValidateChoices(optNode, inGraph, sb);
             }
-            else
+            else if (node is DialogueNode seqNode)
             {
-                if (node.LinkList == null || node.LinkList.Count == 0)
+                if (seqNode.LinkList == null || seqNode.LinkList.Count == 0)
                     sb.AppendLine($"[提示] 节点 [{node.NodeId}] 无出口（可能是结局）");
                 else
-                    ValidateLinks(node, inGraph, sb);
+                    ValidateLinks(seqNode, inGraph, sb);
             }
         }
 
-        static void ValidateLinks(DialogueNode node, HashSet<DialogueNode> inGraph, StringBuilder sb)
+        static void ValidateLinks(DialogueNode node, HashSet<DialogueNodeBase> inGraph, StringBuilder sb)
         {
             foreach (var link in node.LinkList)
             {
@@ -87,7 +87,7 @@ namespace Miemie.DialogSystem.Editor
             }
         }
 
-        static void ValidateChoices(DialogueNode node, HashSet<DialogueNode> inGraph, StringBuilder sb)
+        static void ValidateChoices(DialogueOptionNode node, HashSet<DialogueNodeBase> inGraph, StringBuilder sb)
         {
             foreach (var choice in node.ChoiceList)
             {

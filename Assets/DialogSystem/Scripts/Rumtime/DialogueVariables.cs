@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace Miemie.DialogSystem
+namespace NuoYan.DialogSystem
 {
     [Serializable]
     public class DialogueVariables
@@ -43,6 +43,27 @@ namespace Miemie.DialogSystem
                 }
             }
             flagDataList.Add(new FlagData { key = key, value = value });
+        }
+
+        public void ClearAll()
+        {
+            flagDataList.Clear();
+        }
+
+        public void CopyFrom(DialogueVariables other)
+        {
+            if (other == null) return;
+            flagDataList.Clear();
+            foreach (var flag in other.flagDataList)
+                flagDataList.Add(new FlagData { key = flag.key, value = flag.value });
+        }
+
+        public string[] GetAllKeys()
+        {
+            var keys = new string[flagDataList.Count];
+            for (int i = 0; i < flagDataList.Count; i++)
+                keys[i] = flagDataList[i].key;
+            return keys;
         }
 
         /// <summary>
