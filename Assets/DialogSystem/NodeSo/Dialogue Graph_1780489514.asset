@@ -64,9 +64,9 @@ MonoBehaviour:
   - node: {fileID: 8424602815071516230}
     position: {x: -1536, y: -317}
   - node: {fileID: -1634139740247345036}
-    position: {x: -1118, y: -440}
+    position: {x: -1092.6666, y: -442}
   - node: {fileID: 1364306460201188656}
-    position: {x: -1103, y: -223}
+    position: {x: -1103.3334, y: -224}
   variables:
     flagDataList: []
 --- !u!114 &1121020371467492686
@@ -146,13 +146,13 @@ MonoBehaviour:
   - labelText: "\u9009\u98791"
     toNode: {fileID: -1634139740247345036}
     condition:
-      e_Condition: 1
+      e_Condition: 0
       key: IsToday
       targetBool: 0
   - labelText: "\u9009\u98792"
     toNode: {fileID: 1364306460201188656}
     condition:
-      e_Condition: 1
+      e_Condition: 0
       key: IsToday
       targetBool: 1
 --- !u!114 &8424602815071516230

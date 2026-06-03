@@ -48,7 +48,7 @@ namespace NuoYan.DialogSystem
             OnDialogueEnd?.Invoke();
         }
 
-        public void Advance()
+        void Advance()
         {
             if (currentNode == null) return;
 
@@ -125,29 +125,42 @@ namespace NuoYan.DialogSystem
             }
             return null;
         }
-
-        // ── Unity lifecycle (optional — can be removed for full manual control) ──
-        void Start()
-        {
-            if (dialogueGraph != null)
-                StartDialogue();
-        }
-
-        void Update()
+        /// <summary>
+        /// DialogueStep方法用于推进对话流程，通常在玩家点击“下一步”按钮或按下特定键时调用
+        /// </summary> 
+        public void DialogueStep()
         {
             if (currentNode == null) return;
 
-            if (Input.GetKeyDown(KeyCode.Space))
-                Advance();
+            Advance();
 
             if (currentNode is not DialogueOptionNode) return;
 
             RefreshAvailableChoices();
+
+            DialogueManager.Instance.ClearDialogueOptions();
             for (int i = 0; i < availableChoices.Count && i < 9; i++)
             {
-                if (Input.GetKeyDown(KeyCode.Alpha1 + i))
-                    SelectOption(i);
+                int index = i; // 捕获副本，避免闭包引用循环变量
+                DialogueManager.Instance.CreateDialogueOptions(index, availableChoices[index], () => SelectOption(index));
             }
         }
+
+        // // ── Unity lifecycle (optional — can be removed for full manual control) ──
+        // void Start()
+        // {
+        //     if (dialogueGraph != null)
+        //         StartDialogue();
+        // }
+
+
+        // void Update()
+        // {
+
+        //     if (Input.GetKeyDown(KeyCode.Space))
+        //     {
+        //         DialogueStep();
+        //     }
+        // }
     }
 }
