@@ -3,7 +3,7 @@ using UnityEngine.Events;
 
 namespace NuoYan.DialogSystem
 {
-    [CreateAssetMenu(fileName = "New Dialogue Event", menuName = "Dialog System/Dialogue Event")]
+    [CreateAssetMenu(fileName = "New Dialogue Event", menuName = "NuoYan/Dialog System/Dialogue Event")]
     public class DialogueEvent : SOEventBase
     {
         public UnityEvent onNodeEnter;

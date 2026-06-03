@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace NuoYan.DialogSystem
 {
-    [CreateAssetMenu(fileName = "New Dialog Node", menuName = "Dialog System/Sequence Node")]
+    [CreateAssetMenu(fileName = "New Dialog Node", menuName = "NuoYan/Dialog System/Sequence Node")]
     public class DialogueNode : DialogueNodeBase
     {
         [SerializeField] private List<DialogueLink> linkList = new();

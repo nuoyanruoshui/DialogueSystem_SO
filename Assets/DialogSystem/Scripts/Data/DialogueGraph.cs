@@ -12,7 +12,7 @@ namespace NuoYan.DialogSystem
         public Vector2 position;
     }
 
-    [CreateAssetMenu(fileName = "New Dialogue Graph", menuName = "Dialog System/Dialogue Graph")]
+    [CreateAssetMenu(fileName = "New Dialogue Graph", menuName = "NuoYan/Dialog System/Dialogue Graph")]
     public class DialogueGraph : ScriptableObject
     {
         #region 字段

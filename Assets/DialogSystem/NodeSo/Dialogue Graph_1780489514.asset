@@ -49,7 +49,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   graphId: 1780473607
   graphName: Dialogue Graph_1780473607
-  startNode: {fileID: 0}
+  startNode: {fileID: 1121020371467492686}
   nodeList:
   - {fileID: 1121020371467492686}
   - {fileID: 5793920648032087171}

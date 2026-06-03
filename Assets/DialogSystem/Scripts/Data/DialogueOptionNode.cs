@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace NuoYan.DialogSystem
 {
-    [CreateAssetMenu(fileName = "New Dialog Option Node", menuName = "Dialog System/Option Node")]
+    [CreateAssetMenu(fileName = "New Dialog Option Node", menuName = "NuoYan/Dialog System/Option Node")]
     public class DialogueOptionNode : DialogueNodeBase
     {
         [SerializeField] private List<DialogueChoice> choiceList = new();
