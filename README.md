@@ -1,4 +1,4 @@
-# M_DialogSystem — Unity 对话系统
+# DialogSystem_SO — Unity 对话系统
 
 基于 **ScriptableObject + GraphView** 的可视化对话编辑器与运行时对话播放器。编辑器内拖拽节点、连线、配置分支条件与节点事件；运行时通过 `DialogueRunner` 驱动对话流程，并自带一套基于 `Resources` 加载的 UI 面板（`PanelDialogue` / `DialogueOption`）。
 
