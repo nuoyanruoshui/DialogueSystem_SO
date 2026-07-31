@@ -228,14 +228,6 @@ Assets/DialogSystem/
 
 ---
 
-## 已知问题
-
-- `Assets/DialogSystem/Scripts/Rumtime/` 目录名拼写应为 `Runtime`
-- `Assets/DialogSystem/Scripts/Test.cs` 是空的测试占位文件，可移除
-- 无 `.asmdef`，所有脚本编译到默认 `Assembly-CSharp`
-- 无单元测试
-
----
 
 ## 第三方依赖
 
