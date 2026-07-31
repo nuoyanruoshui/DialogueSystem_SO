@@ -227,6 +227,7 @@ GameObject:
   - component: {fileID: 1214285879}
   - component: {fileID: 1214285880}
   - component: {fileID: 1214285882}
+  - component: {fileID: 1214285883}
   m_Layer: 0
   m_Name: Runner
   m_TagString: Untagged
@@ -275,6 +276,35 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08603d07a4febbf40a8f202f6e65a0ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1214285883
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1214285878}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e69846d27dc4e3f4e82c9c15b991000b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_EventListener:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1214285882}
+        m_TargetAssemblyTypeName: Test, Assembly-CSharp
+        m_MethodName: TestMethod
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  m_EventAsset:
+  - {fileID: -2482310018650140389, guid: e9d308fefdc8d7448a3a3ee5a6af8af4, type: 2}
 --- !u!1 &1398496009
 GameObject:
   m_ObjectHideFlags: 0
