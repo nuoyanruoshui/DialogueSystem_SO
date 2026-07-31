@@ -9,9 +9,8 @@ Unity 2022.3.62f3 对话系统项目。核心是一个基于 ScriptableObject �
 ## 构建与运行
 
 - **编辑器**：在 Unity Editor 中通过 `Tools > Dialog System` 打开对话编辑器窗口，或直接双击 `.asset` Graph 文件自动打开；场景为 `Assets/DialogSystem/Scene/DialogSystemScene.unity`
-- **运行时**：场景中挂载 `DialogueRunner` 组件，通过 Inspector 指定 `DialogueGraph`，运行时按 Space 推进对话，选项节点按 1~9 选择
-- **导出/导入 JSON**：编辑器工具栏提供 "导出 JSON" / "导入 JSON" 按钮
-- **校验**：工具栏 "校验本图" 按钮检查节点连接完整性
+- **运行时**：场景中挂载 `DialogueRunner` 组件，通过 Inspector 指定 `DialogueGraph`。对话由 UI 按钮驱动：`PanelDialogue` 的下一步按钮调用 `DialogueStep()`，选项节点由 `DialogueManager` 从 `Resources` 生成选项按钮（注意：`Start()`/`Update()` 中 Space 推进、1~9 选择的代码已注释，可按需恢复）
+- **编辑器工具栏**："新建对话图" / "校验本图" / "导出 JSON" / "导入 JSON"，播放模式下额外显示 "播放当前图"（查找场景 `DialogueRunner` 并 `StartDialogue`）
 
 ## 项目结构
 
@@ -20,6 +19,8 @@ Assets/DialogSystem/
 ├── Scene/DialogSystemScene.unity          # 主场景
 ├── NodeSo/                                # ScriptableObject 资产目录（Graph .asset，节点作为 sub-asset）
 ├── Export/                                # JSON 导出目录
+├── Resources/                             # 运行时 UI 预制体（PanelDialogue / DialogueOption，Resources.Load）
+├── Front/                                 # UI 资源（simhei 字体）
 └── Scripts/
     ├── Data/
     │   ├── DialogueNodeBase.cs            # 节点基类 ScriptableObject（nodeId, speakType, speakerName, dialogText, 节点事件列表）
@@ -31,6 +32,9 @@ Assets/DialogSystem/
     │   └── SOEventBase.cs                 # ScriptableObject 事件基类 + Editor 运行时监听器显示
     ├── Rumtime/                           # 目录名拼写为 "Rumtime" 而非 "Runtime"
     │   ├── DialogueRunner.cs              # 运行时对话引擎（推进/选择/条件判定/事件触发）
+    │   ├── DialogueManager.cs             # 运行时 UI 管理器（静态单例，Resources 加载对话面板）
+    │   ├── PanelDialogue.cs               # 对话面板（下一步按钮 + TMP 文本 + Options 父节点）
+    │   ├── DialogueOption.cs              # 选项按钮
     │   ├── DialogueSpeakEnums.cs          # 发言类型枚举 (Node/Player/NPC)
     │   ├── DialogueVariables.cs           # 布尔标志变量系统（条件系统的数据源）
     │   ├── DialogueCondition.cs           # 条件系统（DialogueCondition、DialogueLink、DialogueChoice）
@@ -55,21 +59,26 @@ Assets/DialogSystem/
 - `SOEventListener`（MonoBehaviour）：运行时组件，注册到 `SOEventBase` 资产，收到事件后触发自身的 `UnityEvent<object?>`
 
 ### 运行时
-- `DialogueRunner`（MonoBehaviour）驱动对话流程：`Advance()` 沿首条满足条件的 `DialogueLink` 推进，`SelectOption(index)` 选择选项，进入节点时调用 `PlayNode()` 和 `InvokeNodeEvents()`
+- `DialogueRunner`（MonoBehaviour）驱动对话流程：`DialogueStep()` 推进（沿首条满足条件的 `DialogueLink`），`SelectOption(index)` 选择选项，进入节点时调用 `PlayNode()` 和 `InvokeNodeEvents()`。`Start()`/`Update()`（Space 推进、1~9 选择）已注释，当前由 UI 按钮驱动
+- `DialogueManager`（静态单例）：首次访问时从 `Resources` 实例化 `PanelDialogue` 挂到 Canvas；`SetRunner()` 显示面板，`CreateDialogueOptions()` 生成选项按钮（`DialogueStep()` 内调用，上限 9 个）
+- `PanelDialogue`：对话 UI 面板（TMP 正文/说话人 + 下一步 Button + Options 父节点），下一步按钮调用 `DialogueStep()`
 - `DialogueVariables` 管理 `FlagData` 列表（key-value bool 对），编辑器中通过左侧面板的 Parameters 区域编辑
 - `DialogueCondition` 判定 `BoolEquals` 条件是否满足，挂载在 `DialogueLink` / `DialogueChoice` 上控制分支
 - 支持通过脚本注入条件式：`DialogueRunner` 事件 `OnDialogueStart/OnDialogueEnd/OnNodeChanged/OnChoicesUpdated`
 
 ### 编辑器
 - `DialogueGraphEditorWindow` 继承 `OdinMenuEditorWindow`，使用 **自定义 UIToolkit 三栏布局**（非默认 Odin 布局）：
-  - 左侧：OdinMenuTree（Graph/节点树）+ Parameters 变量编辑器
+  - 顶部工具栏：新建对话图 / 校验本图 / 导出 JSON / 导入 JSON / 播放当前图（仅播放模式显示）
+  - 左侧：OdinMenuTree（Graph/节点树）+ Parameters 变量编辑器（+ 添加 / 行内改名 / × 删除）
   - 中间：GraphView 画布（自定义 IMGUI 网格背景 + 缩放/中键平移/右键菜单）
-  - 右侧：Odin PropertyTree Inspector + 行内重命名（选中连线时显示条件编辑器）
-- `DialogueNodeView`（GraphView 节点）：两种样式 —— TALK（蓝色，序列节点）和 OPTION（橙色，选项节点），标题栏包含事件⚡徽章，起止节点有绿色边框
+  - 右侧：Odin PropertyTree Inspector + 行内重命名（选中连线时显示 Transition 条件编辑器）
+- `DialogueNodeView`（GraphView 节点）：两种样式 —— TALK（蓝色，序列节点）和 OPTION（橙色，选项节点），标题栏包含事件⚡徽章，起止节点有绿色边框；选项节点每个选项一个输出端口，序列节点画布上仅显示单个 Out 端口（数据层可含多条 Link）
+- 新建选项节点会预置 2 个默认选项，连线时端口不足会自动补足
 - 右键菜单（GraphView 空白处）："Create Sequence Node" / "Create Option Node"
-- 右键菜单（节点上）："Add Choice"（仅选项节点）/ "Add Node Event" / "Set as Start Node"
-- 连线点击：右侧面板显示条件编辑器（E_Condition 枚举、Key 下拉、Bool 值），支持从已有参数列表中选择
-- JSON 导入/导出使用 Newtonsoft.Json，通过纯数据 DTO 模型避免依赖 Unity 资产引用
+- 右键菜单（节点上）："Add Choice"（仅选项节点）/ "Add Node Event" / "Set as Start Node" / "Focus on Left Tree"
+- 节点事件：事件作为节点的 sub-asset 存储，节点展开区显示事件行（⚡ 计数），点击行 Ping/选中事件资产，× 删除
+- 连线点击：右侧面板显示条件编辑器（E_Condition 枚举、Key 下拉、Bool 值），支持从已有参数列表中选择；选项连线还可编辑 Label 文案
+- JSON 导入/导出使用 Newtonsoft.Json，通过纯数据 DTO 模型避免依赖 Unity 资产引用；导入到已有图时按 nodeId 合并（同 id 更新、缺失新建、多余移除但资产保留）
 
 ### 命名空间
 - 运行时与数据模型：`NuoYan.DialogSystem`
@@ -83,6 +92,5 @@ Assets/DialogSystem/
 
 ## 已知问题
 - `Assets/DialogSystem/Scripts/Rumtime/` 目录名应为 `Runtime`（拼写错误）
-- `Assets/DialogSystem/Scripts/Test.cs` 是空的测试占位文件，可以移除
 - 无 `.asmdef` 程序集定义文件，所有脚本编译到默认 `Assembly-CSharp`
 - 无单元测试
